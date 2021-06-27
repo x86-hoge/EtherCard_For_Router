@@ -1,12 +1,12 @@
-# EtherCard
+# EtherCard_For_Router
 
 [![Travis Status][S]][T]
 
-**EtherCard** is a driver for the Microchip ENC28J60 chip, compatible with Arduino IDE.
-It is adapted and extended from code written by Guido Socher and Pascal Stang.
+**EtherCard_For_Router** はArduinoで動作するRouterライブラリです。
+ENC28J60の
+フォーク元：EtherCard
 
-High-level routines are provided to allow a variety of purposes 
-including simple data transfer through to HTTP handling.
+
 
 License: GPL2
 
