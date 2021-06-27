@@ -1,25 +1,20 @@
 # EtherCard_For_Router
 
-[![Travis Status][S]][T]
+**EtherCard_For_Router** はEtherCardをRouter作成用に改造したENC28J60ドライバ
 
-**EtherCard_For_Router** はArduinoで動作するRouterライブラリです。
-ENC28J60の
 フォーク元：EtherCard
-
-
-
 License: GPL2
 
-
-## Requirements
+## 対応ハードウェアについて
 
 * Hardware: This library **only** supports the ENC28J60 chip.
 * Hardware: Only AVR-based microcontrollers are supported, such as:
-    * Arduino Uno
-    * Arduino Mega
-    * Arduino Leonardo
-    * Arduino Nano/Pro/Fio/Pro-mini/LiliPad/Duemilanove
-    * Any other Arduino clone using an AVR microcontroller should work
+    * Arduino Uno　※対応確認済
+    * Arduino Mega　※未確認
+    * Arduino Leonardo　※未確認
+    * Arduino Nano/Pro/Fio/Pro-mini/LiliPad/Duemilanove　※未確認
+    * Any other Arduino clone using an AVR microcontroller should work　※未確認
+
 * Hardware: Non-AVR boards are **NOT** currently supported (101/Zero/Due)
   [#211](https://github.com/njh/EtherCard/issues/211#issuecomment-255011491)
 * Hardware: Depending on the size of the buffer for packets, this library
