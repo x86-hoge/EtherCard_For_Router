@@ -15,10 +15,6 @@
 #endif
 #include "enc28j60.h"
 
-uint16_t ENC28J60::bufferSize;
-bool ENC28J60::broadcast_enabled = false;
-bool ENC28J60::promiscuous_enabled = false;
-
 // ENC28J60 Control Registers
 // Control register definitions are a combination of address,
 // bank number, and Ethernet/MAC/PHY indicator bits.
@@ -228,8 +224,15 @@ bool ENC28J60::promiscuous_enabled = false;
 
 #define FULL_SPEED  1   // switch to full-speed SPI for bulk transfers
 
-static byte Enc28j60Bank;
-static byte selectPin;
+
+bool     ENC28J60::broadcast_enabled[MAX_CONNECT_ENC28J60]   = {};
+bool     ENC28J60::promiscuous_enabled[MAX_CONNECT_ENC28J60] = {};
+uint8_t  ENC28J60::select_ether                              = 0;
+uint8_t  ENC28J60::Enc28j60Bank[MAX_CONNECT_ENC28J60]        = {};
+uint8_t  ENC28J60::selectPin[MAX_CONNECT_ENC28J60]           = {};
+uint16_t ENC28J60::bufferSize                                = 0;
+uint16_t ENC28J60::gNextPacketPtr[MAX_CONNECT_ENC28J60]      = {};
+bool     ENC28J60::unreleasedPacket[MAX_CONNECT_ENC28J60]    = {};
 
 void ENC28J60::initSPI () {
     pinMode(SS, OUTPUT);
@@ -246,23 +249,36 @@ void ENC28J60::initSPI () {
     bitSet(SPSR, SPI2X);
 }
 
-static void enableChip () {
+
+static void ENC28J60::Init_val(){
+    for(uint8_t i=0;i<MAX_CONNECT_ENC28J60;i++){
+        broadcast_enabled[i] = false;
+        promiscuous_enabled[i] = false;    
+        Enc28j60Bank[i] = 0;
+        selectPin[i] = 0;
+    }
+}
+static void ENC28J60::change_selectPin(){
+    select_ether++;
+    if (select_ether >= MAX_CONNECT_ENC28J60)select_ether = 0;
+}
+static void ENC28J60::enableChip () {
     cli();
-    digitalWrite(selectPin, LOW);
+    digitalWrite(selectPin[select_ether], LOW);
 }
 
-static void disableChip () {
-    digitalWrite(selectPin, HIGH);
+static void ENC28J60::disableChip () {
+    digitalWrite(selectPin[select_ether], HIGH);
     sei();
 }
 
-static void xferSPI (byte data) {
+static void ENC28J60::xferSPI (byte data) {
     SPDR = data;
     while (!(SPSR&(1<<SPIF)))
         ;
 }
 
-static byte readOp (byte op, byte address) {
+static byte ENC28J60::readOp (byte op, byte address) {
     enableChip();
     xferSPI(op | (address & ADDR_MASK));
     xferSPI(0x00);
@@ -273,14 +289,14 @@ static byte readOp (byte op, byte address) {
     return result;
 }
 
-static void writeOp (byte op, byte address, byte data) {
+static void ENC28J60::writeOp (byte op, byte address, byte data) {
     enableChip();
     xferSPI(op | (address & ADDR_MASK));
     xferSPI(data);
     disableChip();
 }
 
-static void readBuf(uint16_t len, byte* data) {
+static void ENC28J60::readBuf(uint16_t len, byte* data) {
     uint8_t nextbyte;
 
     enableChip();
@@ -302,11 +318,10 @@ static void readBuf(uint16_t len, byte* data) {
     disableChip();
 }
 
-static void writeBuf(uint16_t len, const byte* data) {
+static void ENC28J60::writeBuf(uint16_t len, const byte* data) {
     enableChip();
     if (len != 0) {
         xferSPI(ENC28J60_WRITE_BUF_MEM);
-
         SPDR = *data++;
         while (--len) {
             uint8_t nextbyte = *data++;
@@ -320,34 +335,34 @@ static void writeBuf(uint16_t len, const byte* data) {
     disableChip();
 }
 
-static void SetBank (byte address) {
-    if ((address & BANK_MASK) != Enc28j60Bank) {
+static void ENC28J60::SetBank (byte address) {
+    if ((address & BANK_MASK) != Enc28j60Bank[select_ether]) {
         writeOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_BSEL1|ECON1_BSEL0);
-        Enc28j60Bank = address & BANK_MASK;
-        writeOp(ENC28J60_BIT_FIELD_SET, ECON1, Enc28j60Bank>>5);
+        Enc28j60Bank[select_ether] = address & BANK_MASK;
+        writeOp(ENC28J60_BIT_FIELD_SET, ECON1, Enc28j60Bank[select_ether]>>5);
     }
 }
 
-static byte readRegByte (byte address) {
+static byte ENC28J60::readRegByte (byte address) {
     SetBank(address);
     return readOp(ENC28J60_READ_CTRL_REG, address);
 }
 
-static uint16_t readReg(byte address) {
+static uint16_t ENC28J60::readReg(byte address) {
     return readRegByte(address) + (readRegByte(address+1) << 8);
 }
 
-static void writeRegByte (byte address, byte data) {
+static void ENC28J60::writeRegByte (byte address, byte data) {
     SetBank(address);
     writeOp(ENC28J60_WRITE_CTRL_REG, address, data);
 }
 
-static void writeReg(byte address, uint16_t data) {
+static void ENC28J60::writeReg(byte address, uint16_t data) {
     writeRegByte(address, data);
     writeRegByte(address + 1, data >> 8);
 }
 
-static uint16_t readPhyByte (byte address) {
+static uint16_t ENC28J60::readPhyByte (byte address) {
     writeRegByte(MIREGADR, address);
     writeRegByte(MICMD, MICMD_MIIRD);
     while (readRegByte(MISTAT) & MISTAT_BUSY)
@@ -356,24 +371,32 @@ static uint16_t readPhyByte (byte address) {
     return readRegByte(MIRD+1);
 }
 
-static void writePhy (byte address, uint16_t data) {
+static void ENC28J60::writePhy (byte address, uint16_t data) {
     writeRegByte(MIREGADR, address);
     writeReg(MIWR, data);
     while (readRegByte(MISTAT) & MISTAT_BUSY)
         ;
 }
 
-byte ENC28J60::initialize (uint16_t size, const byte* macaddr, byte csPin) {
+static void ENC28J60::set_mac(const byte* macaddr){
+    writeRegByte(MAADR5, macaddr[0]);
+    writeRegByte(MAADR4, macaddr[1]);
+    writeRegByte(MAADR3, macaddr[2]);
+    writeRegByte(MAADR2, macaddr[3]);
+    writeRegByte(MAADR1, macaddr[4]);
+    writeRegByte(MAADR0, macaddr[5]);
+}
+static void ENC28J60::Set_BufferSize(uint16_t size){
     bufferSize = size;
-    if (bitRead(SPCR, SPE) == 0)
-        initSPI();
-    selectPin = csPin;
-    pinMode(selectPin, OUTPUT);
+}
+byte ENC28J60::initialize(const byte* macaddr,uint8_t csPin) {
+    selectPin[select_ether] = csPin;
+    pinMode(selectPin[select_ether], OUTPUT);
     disableChip();
 
     writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
     delay(2); // errata B7/2
-    while (!(readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY))
+    while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY)
         ;
 
     writeReg(ERXST, RXSTART_INIT);
@@ -530,20 +553,18 @@ void ENC28J60::packetSend(uint16_t len) {
 
 
 uint16_t ENC28J60::packetReceive() {
-    static uint16_t gNextPacketPtr = RXSTART_INIT;
-    static bool     unreleasedPacket = false;
     uint16_t len = 0;
 
-    if (unreleasedPacket) {
-        if (gNextPacketPtr == 0)
+    if (unreleasedPacket[select_ether]) {
+        if (gNextPacketPtr[select_ether] == 0)
             writeReg(ERXRDPT, RXSTOP_INIT);
         else
-            writeReg(ERXRDPT, gNextPacketPtr - 1);
-        unreleasedPacket = false;
+            writeReg(ERXRDPT, gNextPacketPtr[select_ether] - 1);
+        unreleasedPacket[select_ether] = false;
     }
 
     if (readRegByte(EPKTCNT) > 0) {
-        writeReg(ERDPT, gNextPacketPtr);
+        writeReg(ERDPT, gNextPacketPtr[select_ether]);
 
         struct {
             uint16_t nextPacket;
@@ -553,7 +574,7 @@ uint16_t ENC28J60::packetReceive() {
 
         readBuf(sizeof header, (byte*) &header);
 
-        gNextPacketPtr  = header.nextPacket;
+        gNextPacketPtr[select_ether]  = header.nextPacket;
         len = header.byteCount - 4; //remove the CRC count
         if (len>bufferSize-1)
             len=bufferSize-1;
@@ -562,7 +583,7 @@ uint16_t ENC28J60::packetReceive() {
         else
             readBuf(len, buffer);
         buffer[len] = 0;
-        unreleasedPacket = true;
+        unreleasedPacket[select_ether] = true;
 
         writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_PKTDEC);
     }
@@ -607,20 +628,20 @@ void ENC28J60::powerDown() {
 
 void ENC28J60::powerUp() {
     writeOp(ENC28J60_BIT_FIELD_CLR, ECON2, ECON2_PWRSV);
-    while(!(readRegByte(ESTAT) & ESTAT_CLKRDY));
+    while(!readRegByte(ESTAT) & ESTAT_CLKRDY);
     writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
 }
 
 void ENC28J60::enableBroadcast (bool temporary) {
     writeRegByte(ERXFCON, readRegByte(ERXFCON) | ERXFCON_BCEN);
     if(!temporary)
-        broadcast_enabled = true;
+        broadcast_enabled[select_ether] = true;
 }
 
 void ENC28J60::disableBroadcast (bool temporary) {
     if(!temporary)
-        broadcast_enabled = false;
-    if(!broadcast_enabled)
+        broadcast_enabled[select_ether] = false;
+    if(!broadcast_enabled[select_ether])
         writeRegByte(ERXFCON, readRegByte(ERXFCON) & ~ERXFCON_BCEN);
 }
 
@@ -635,13 +656,13 @@ void ENC28J60::disableMulticast () {
 void ENC28J60::enablePromiscuous (bool temporary) {
     writeRegByte(ERXFCON, readRegByte(ERXFCON) & ERXFCON_CRCEN);
     if(!temporary)
-        promiscuous_enabled = true;
+        promiscuous_enabled[select_ether] = true;
 }
 
 void ENC28J60::disablePromiscuous (bool temporary) {
     if(!temporary)
-        promiscuous_enabled = false;
-    if(!promiscuous_enabled) {
+        promiscuous_enabled[select_ether] = false;
+    if(!promiscuous_enabled[select_ether]) {
         writeRegByte(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN|ERXFCON_BCEN);
     }
 }
@@ -655,13 +676,12 @@ uint8_t ENC28J60::doBIST ( byte csPin) {
 // init
     if (bitRead(SPCR, SPE) == 0)
         initSPI();
-    selectPin = csPin;
-    pinMode(selectPin, OUTPUT);
+    selectPin[select_ether] = csPin;
     disableChip();
 
     writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
     delay(2); // errata B7/2
-    while (!(readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY)) ;
+    while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY) ;
 
 
     // now we can start the memory test

@@ -1,31 +1,19 @@
 {
-  "name": "EtherCard",
-  "version": "1.1.0",
-  "keywords": "http, web, server, client, ethernet",
-  "description": "EtherCard is an IPv4 driver for the ENC28J60 chip.",
-  "homepage": "https://github.com/njh/EtherCard",
+  "name": "ENCRoute",
+  "version": "1.0.0",
+  "keywords": "router, server, ethernet",
+  "description": "ENCRoute is an IPv4 driver for the ENC28J60 chip.",
+  "homepage": "none",
   "authors":
   [
-    {
-      "name": "Nicholas Humfrey",
-      "url": "http://njh.me/",
-      "maintainer": true
-    },
-    {
-      "name": "Jean-Claude Wippler",
-      "url": "http://jeelabs.org/"
-    },
-    {
-      "name": "Pascal Stang"
-    },
     {
       "name": "Guido Socher"
     }
   ],
   "repository":
   {
-    "type": "git",
-    "url": "https://github.com/njh/EtherCard.git"
+    "type": "none",
+    "url": "none"
   },
   "license": "GPL-2.0",
   "frameworks": "arduino",

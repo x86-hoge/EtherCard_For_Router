@@ -35,30 +35,56 @@
 #define ENC_HEAP_START      SCRATCH_LIMIT
 #define ENC_HEAP_END        0x2000
 
+
+#define MAX_CONNECT_ENC28J60 2
+
+
 /** This class provide low-level interfacing with the ENC28J60 network interface. This is used by the EtherCard class and not intended for use by (normal) end users. */
 class ENC28J60 {
 public:
     static uint8_t buffer[]; //!< Data buffer (shared by receive and transmit)
     static uint16_t bufferSize; //!< Size of data buffer
-    static bool broadcast_enabled; //!< True if broadcasts enabled (used to allow temporary disable of broadcast for DHCP or other internal functions)
-    static bool promiscuous_enabled; //!< True if promiscuous mode enabled (used to allow temporary disable of promiscuous mode)
+    static bool broadcast_enabled[MAX_CONNECT_ENC28J60]; //!< True if broadcasts enabled (used to allow temporary disable of broadcast for DHCP or other internal functions)
+    static bool promiscuous_enabled[MAX_CONNECT_ENC28J60]; //!< True if promiscuous mode enabled (used to allow temporary disable of promiscuous mode)
+    static uint8_t select_ether;
+    static uint8_t Enc28j60Bank[MAX_CONNECT_ENC28J60];
+    static uint8_t selectPin[MAX_CONNECT_ENC28J60];
+    static uint16_t gNextPacketPtr[MAX_CONNECT_ENC28J60];
+    static bool     unreleasedPacket[MAX_CONNECT_ENC28J60];
+
 
     static uint8_t* tcpOffset () { return buffer + 0x36; } //!< Pointer to the start of TCP payload
-
+    
+    /**   @brief  initialize variable
+    *     @note   change selectPin variable
+    */
+    
+    static void Init_val();
+    /**   @brief  select pin
+    *     @note   change selectPin variable
+    */
+    
+    static void change_selectPin();
+    
+    /**   @brief  set buffersize
+    *     @note   none
+    */
+   static void Set_BufferSize(uint16_t size);
     /**   @brief  Initialise SPI interface
     *     @note   Configures Arduino pins as input / output, etc.
     */
     static void initSPI ();
-
     /**   @brief  Initialise network interface
     *     @param  size Size of data buffer
     *     @param  macaddr Pointer to 6 byte hardware (MAC) address
     *     @param  csPin Arduino pin used for chip select (enable network interface SPI bus). Default = 8
     *     @return <i>uint8_t</i> ENC28J60 firmware version or zero on failure.
     */
-    static uint8_t initialize (const uint16_t size, const uint8_t* macaddr,
-                               uint8_t csPin = 8);
-
+    static uint8_t initialize (const uint8_t* macaddr,uint8_t csPin);
+    /**   @brief  set mac addr
+    *     @return NONE
+    */
+    static void set_mac(const byte* macaddr);
     /**   @brief  Check if network link is connected
     *     @return <i>bool</i> True if link is up
     */
@@ -176,17 +202,31 @@ public:
      */
     static void memcpy_to_enc(uint16_t dest, void* source, int16_t num);
 
-     /** @brief copies a block of data from the enc memory to SRAM
+    /** @brief copies a block of data from the enc memory to SRAM
         @param dest destination address within SRAM
         @param source source address within enc memory
         @param num number of bytes to copy
      */
     static void memcpy_from_enc(void* dest, uint16_t source, int16_t num);
+private:
+
+    static void enableChip ();
+    static void disableChip();
+    static void xferSPI(uint8_t data);
+    static uint8_t readOp(uint8_t op,uint8_t address);
+    static void writeOp(uint8_t op,uint8_t address,uint8_t data);
+    static void readBuf(uint16_t len,uint8_t* data);
+    static void writeBuf(uint16_t len, const uint8_t* data);
+    static void SetBank(uint8_t address);
+    static uint8_t readRegByte(uint8_t address);
+    static uint16_t readReg(uint8_t address);
+    static void writeRegByte(uint8_t address,uint8_t data);
+    static void writeReg(uint8_t address,uint16_t data);
+    static uint16_t readPhyByte(uint8_t address);
+    static void writePhy(uint8_t address, uint16_t data);
+
+
 };
-
-typedef ENC28J60 Ethernet; //!< Define alias Ethernet for ENC28J60
-
-
 /** Workaround for Errata 13.
 *   The transmission hardware may drop some packets because it thinks a late collision
 *   occurred (which should never happen if all cable length etc. are ok). If setting
