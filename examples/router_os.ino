@@ -3,30 +3,40 @@
 #include <TimerOne.h>
 
 #define ICMP_REPLY_NUM 4
+#define BUFFER_SIZE 1500
 
 static uint8_t ip[2][4]  = {{ 192, 168, 1, 1}, {192, 168, 2, 1}}; //IPアドレス
 
 static uint8_t network[2][4]  = {{192, 168, 1, 0,}, {192, 168, 2, 0}}; //ネットワークアドレス
 static uint8_t subnet[2][4]  = {{ 255, 255, 255, 0}, {255, 255, 255, 0}}; //サブネットマスク
 
-static uint8_t mac[2][6] = {{0x13, 0x45, 0x75, 0xF2, 0x1A, 0x1B}, {0x12, 0x10, 0x39, 0x07, 0x11, 0x11}
-};//MACアドレス
+//MACアドレス
+static uint8_t mac[2][6] = {
+    {0x13, 0x45, 0x75, 0xF2, 0x1A, 0x1B}, 
+    {0x12, 0x10, 0x39, 0x07, 0x11, 0x11}
+};
+
 static uint8_t csPin[MAX_CONNECT_ENC28J60] = {8, 9}; //CSピン
+
 static uint8_t protocol_type = 0;//解析したプロトコルの種類
-uint8_t ENC28J60::buffer[500]; //バッファ
+
+uint8_t ENC28J60::buffer[BUFFER_SIZE]; //バッファ
 
 static uint16_t buffer_len;//バッファの長さ
 
 static uint8_t icmp_left[MAX_CONNECT_ENC28J60] = {};
+
 static uint8_t arp_left[MAX_CONNECT_ENC28J60]  = {};
 
 const uint8_t led_r[] = {1, 0, 1, 0, 1, 0, 1, 0};
+
 const uint8_t led_g[] = {1, 1, 0, 0, 1, 1, 0, 0};
+
 const uint8_t led_b[] = {1, 1, 1, 1, 0, 0, 0, 0};
 
 enum route_status{
   CONNECTED,
-  };
+};
 
 //[ip addr : 4byte][mac addr : 6byte]
 static uint8_t arp_table[100] =
@@ -149,12 +159,14 @@ uint16_t checksum(uint8_t addr, uint16_t len) {
   ret = (ret & 0x00ffff) + (ret >> 16);
   return (uint16_t)~ret;
 }
+
 bool is_me() {
   for (int i = 0; i < 4; i++) {
     if (ether.buffer[IP_DST_P + i] != ip[ether.select_ether][i])return false;
   }
   return true;
 }
+
 void rep_icmp() {
   if (is_me()) {
     if (icmp_left[ether.select_ether] <= 0)
@@ -198,11 +210,14 @@ void check_tcp() {
     if (ether.buffer[TCP_DST_PORT_H_P] == 0x00 && ether.buffer[TCP_DST_PORT_L_P] == 0x80)return;
     if (ether.buffer[TCP_FLAGS_P] == TCP_FLAGS_SYN_V) {
       uint8_t target_ip[4]; uint8_t target_mac[6];
-      //copy src ip and mac
+
+      //IPとMACアドレスをコピー
       for (uint8_t i = 0; i < IP_LEN; i++)target_ip[i] = ether.buffer[IP_SRC_P + i];
       for (uint8_t i = 0; i < 6; i++)target_mac[i] = ether.buffer[6 + i];
+      
       show_mac(target_mac);
       show_ip(target_ip);
+      
       //========= L2 ===========
       for (uint8_t i = 0; i < 6; i++)ether.buffer[i] = target_mac[i];
       for (uint8_t i = 0; i < 6; i++)ether.buffer[6 + i] = mac[ether.select_ether][i];
