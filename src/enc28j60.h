@@ -46,7 +46,7 @@ public:
     static uint16_t bufferSize; //!< Size of data buffer
     static bool broadcast_enabled[MAX_CONNECT_ENC28J60]; //!< True if broadcasts enabled (used to allow temporary disable of broadcast for DHCP or other internal functions)
     static bool promiscuous_enabled[MAX_CONNECT_ENC28J60]; //!< True if promiscuous mode enabled (used to allow temporary disable of promiscuous mode)
-    static uint8_t select_ether;
+    static uint8_t select_ether; //ピン選択
     static uint8_t Enc28j60Bank[MAX_CONNECT_ENC28J60];
     static uint8_t selectPin[MAX_CONNECT_ENC28J60];
     static uint16_t gNextPacketPtr[MAX_CONNECT_ENC28J60];

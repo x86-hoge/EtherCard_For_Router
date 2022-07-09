@@ -18,6 +18,9 @@
 #define DNS_PORT  53
 #define NTP_PORT  123
 
+#define ICMP_REPLY_NUM 4
+
+
 // ******* ETH *******
 #define ETH_HEADER_LEN    14
 #define ETH_LEN 6
@@ -34,6 +37,10 @@
 //
 #define ETH_DST_MAC 0
 #define ETH_SRC_MAC 6
+
+
+// ******* MAC *******
+#define MAC_LEN 6
 
 
 // ******* ARP *******
