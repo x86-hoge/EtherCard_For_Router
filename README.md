@@ -2,46 +2,19 @@
 
 **EtherCard_For_Router** はEtherCardをRouter作成用に改造したENC28J60ドライバ
 
-* Forked From EtherCard
-* License: GPL2
+* フォーク元 EtherCard
+* ライセンス GPL2
 
 ## 対応ハードウェアについて
-
-* Hardware: This library **only** supports the ENC28J60 chip.
-* Hardware: Only AVR-based microcontrollers are supported, such as:
     * Arduino Uno　※対応確認済
     * Arduino Mega　※未確認
     * Arduino Leonardo　※未確認
-    * Arduino Nano/Pro/Fio/Pro-mini/LiliPad/Duemilanove　※未確認
-    * Any other Arduino clone using an AVR microcontroller should work　※未確認
 
-* Hardware: Non-AVR boards are **NOT** currently supported (101/Zero/Due)
-  [#211](https://github.com/njh/EtherCard/issues/211#issuecomment-255011491)
-* Hardware: Depending on the size of the buffer for packets, this library
-  uses about 1k of Arduino RAM. Large strings and other global variables
-  can easily push the limits of smaller microcontrollers.
-* Hardware: This library uses the SPI interface of the microcontroller,
-  and will require at least one dedicated pin for CS, plus the SO, SI, and
-  SCK pins of the SPI interface. An interrupt pin is not required.
-* Software: Any Arduino IDE >= 1.0.0 should be fine
-
-
-## Library Installation
-
-EtherCard is available for installation in the [Arduino Library Manager].
-Alternatively it can be downloaded directly from GitHub:
-
-1. Download the ZIP file from https://github.com/njh/EtherCard/archive/master.zip
-2. Rename the downloaded file to `ethercard.zip`
-3. From the Arduino IDE: Sketch -> Include Library... -> Add .ZIP Library...
-4. Restart the Arduino IDE to see the new "EtherCard" library with examples
-
-See the comments in the example sketches for details about how to try them out.
 
 
 ## Physical Installation
 
-### PIN Connections (Using Arduino UNO or Arduino NANO):
+### ピン接続 (Using Arduino UNO or Arduino NANO):
 
 | ENC28J60 | Arduino Uno | Notes                                       |
 |----------|-------------|---------------------------------------------|
@@ -53,7 +26,7 @@ See the comments in the example sketches for details about how to try them out.
 | CS       | Pin 10      | Selectable with the ether.begin() function  |
 
 
-### PIN Connections using an Arduino Mega
+### ピン接続(Arduino Mega)
 
 | ENC28J60 | Arduino Mega | Notes                                       |
 |----------|--------------|---------------------------------------------|
@@ -63,113 +36,3 @@ See the comments in the example sketches for details about how to try them out.
 | MISO     | Pin 50       |                                             |
 | MOSI     | Pin 51       |                                             |
 | CS       | Pin 53       | Selectable with the ether.begin() function  |
-
-
-## Using the library
-
-Full API documentation for this library is at: http://www.aelius.com/njh/ethercard/
-
-Several [example sketches] are provided with the library which demonstrate various features.
-Below are descriptions on how to use the library.
-
-Note: `ether` is a globally defined instance of the `EtherCard` class and may be used to access the library.
-
-
-### Initialising the library
-
-Initiate To initiate the library call `ether.begin()`.
-
-```cpp
-uint8_t Ethernet::buffer[700]; // configure buffer size to 700 octets
-static uint8_t mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 }; // define (unique on LAN) hardware (MAC) address
-
-uint8_type vers = ether.begin(sizeof Ethernet::buffer, mymac);
-if(vers == 0)
-{
-    // handle failure to initiate network interface
-}
-```
-
-### Configure using DHCP
-
-To configure IP address via DHCP use `ether.dhcpSetup()`.
-
-```cpp
-if(!ether.dhcpSetup())
-{
-    // handle failure to obtain IP address via DHCP
-}
-ether.printIp("IP:   ", ether.myip); // output IP address to Serial
-ether.printIp("GW:   ", ether.gwip); // output gateway address to Serial
-ether.printIp("Mask: ", ether.netmask); // output netmask to Serial
-ether.printIp("DHCP server: ", ether.dhcpip); // output IP address of the DHCP server
-```
-
-### Static IP Address
-
-To configure a static IP address use `ether.staticSetup()`.
-
-```cpp
-const static uint8_t ip[] = {192,168,0,100};
-const static uint8_t gw[] = {192,168,0,254};
-const static uint8_t dns[] = {192,168,0,1};
-
-if(!ether.staticSetup(ip, gw, dns);
-{
-    // handle failure to configure static IP address (current implementation always returns true!)
-}
-```
-
-### Send UDP packet
-
-To send a UDP packet use `ether.sendUdp()`.
-
-```C
-char payload[] = "My UDP message";
-uint8_t nSourcePort = 1234;
-uint8_t nDestinationPort = 5678;
-uint8_t ipDestinationAddress[IP_LEN];
-ether.parseIp(ipDestinationAddress, "192.168.0.200");
-
-ether.sendUdp(payload, sizeof(payload), nSourcePort, ipDestinationAddress, nDestinationPort);
-```
-
-### DNS Lookup
-
-To perform a DNS lookup use `ether.dnsLookup()`.
-
-```
-if(!ether.dnsLookup("google.com"))
-{
-    // handle failure of DNS lookup
-}
-ether.printIp("Server: ", ether.hisip); // Result of DNS lookup is placed in the hisip member of EtherCard.
-```
-
-## Gotchas
-
-Currently the library does not have a local network ARP cache implemented. This means if sending UDP:
- * The only ARP lookup it does is for the gateway address.
- * You cannot send UDP frames except via a gateway.
-
-If you are wondering why your local UDP packets are not being received, this is why! (See [#59](https://github.com/njh/EtherCard/issues/59), [#181](https://github.com/njh/EtherCard/issues/181), [#269](https://github.com/njh/EtherCard/issues/269), [#309](https://github.com/njh/EtherCard/issues/309), [#351](https://github.com/njh/EtherCard/issues/351), [#368](https://github.com/njh/EtherCard/issues/368)).
-
-The general workaround is to use a gateway and send UDP packets only to non-local network addresses.
-
-
-## Related Work
-
-There are other Arduino libraries for the ENC28J60 that are worth mentioning:
-
-* [UIPEthernet](https://github.com/UIPEthernet/UIPEthernet) (Drop in replacement for stock Arduino Ethernet library)
-* [EtherSia](https://github.com/njh/EtherSia) (IPv6 Arduino library for ENC28J60)
-* [EtherShield](https://github.com/thiseldo/EtherShield) (no longer maintained, predecessor to Ethercard)
-* [ETHER_28J60](https://github.com/muanis/arduino-projects/tree/master/libraries/ETHER_28J60) (no longer maintained, very low footprint and simple)
-
-Read more about the differences at [this blog post](http://www.tweaking4all.com/hardware/arduino/arduino-enc28j60-ethernet/).
-
-
-[Arduino Library Manager]: https://www.arduino.cc/en/Guide/Libraries
-[example sketches]: https://github.com/njh/EtherCard/tree/master/examples
-[S]: https://travis-ci.com/njh/EtherCard.svg
-[T]: https://travis-ci.com/njh/EtherCard
