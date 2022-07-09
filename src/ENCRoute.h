@@ -36,7 +36,7 @@ class ENCRoute: public ENC28J60{
         static uint8_t protocol_type;
 
         /* L2タイプフィールドをチェックし変数に格納 */
-        static void checkProtocol();
+        static uint8_t checkProtocol();
         /* ルータ宛のARPリクエストの返信 */
         static void Rep_Arp();
         /* ARPパケットを作成し、返信が来るまで待機 */
@@ -44,6 +44,8 @@ class ENCRoute: public ENC28J60{
         /* チェックサムを算出 */
         static uint16_t checksum(uint8_t addr,uint16_t len);
 
+
+        
         /* 自分宛てのパケットか確認 */
         static bool isMe();
         
@@ -59,12 +61,18 @@ class ENCRoute: public ENC28J60{
         /* 光 */
         static void lightProtocol();
         /* 処理開始 */
-        static void start();
+        static void update();
 
         /* デバック用 */
-        static void show_mac(uint8_t* mac);
-        static void show_ip(uint8_t* ip);
-        static void show_test();
+        static void showMac(uint8_t* mac);
+        static void showIp(uint8_t* ip);
+        static void showTest();
+    private:
+        static void ipcpy(void* src,void* dst);
+        static void maccpy(void* src,void* dst);
+
+        static bool ipcmp(void* src,void* dst);
+        static bool maccmp(void* src,void* dst);
 };
 
 
